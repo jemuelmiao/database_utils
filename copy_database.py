@@ -11,6 +11,7 @@ from pymongo.collection import Collection
 from pymongo.database import Database
 from subprocess import Popen, PIPE
 from optparse import OptionParser
+from bson.son import SON
 import os
 import re
 import sys
@@ -135,7 +136,7 @@ class Exporter(IExporter):
 		super(Exporter, self).__init__(client)
 
 	def run(self, dir, dbMode, dbNames, force=True):
-		print 'export run==========================='
+		print('export run===========================')
 		if not os.path.isdir(dir):
 			os.mkdir(dir)
 		host = self._client.host
@@ -163,7 +164,7 @@ class Exporter(IExporter):
 			for colInfo in dbInfo.colList:
 				colName = colInfo.name
 				if not force and dbName in dbFileDict and colName in dbFileDict[dbName]:
-					print 'using exist %s.%s'%(dbName, colName)
+					print('using exist %s.%s'%(dbName, colName))
 					continue
 				dataFile = os.path.join(path, 'd_' + colName)
 				indexFile = os.path.join(path, 'i_' + colName)
@@ -173,8 +174,8 @@ class Exporter(IExporter):
 					exportcmd += ' -u %s' %(user)
 				if password:
 					exportcmd += ' -p %s' %(urllib_.unquote(password))
-				# print exportcmd
-				print 'exporting %s.%s'%(dbName, colName)
+				# print(exportcmd)
+				print('exporting %s.%s'%(dbName, colName))
 				p = Popen(exportcmd, shell=True, stdout=PIPE, stderr=PIPE)
 				p.wait()
 				errContent = p.stderr.read()
@@ -183,14 +184,14 @@ class Exporter(IExporter):
 					real = int(matchObj.group(1))
 					need = colInfo.count
 					if real < need:
-						print '\twarn:%d/%d' % (need, real)
+						print('\twarn:%d/%d' % (need, real))
 					else:
-						print '\tsucc:%d/%d' % (need, real)
+						print('\tsucc:%d/%d' % (need, real))
 					indexList = colInfo.getIndex()
 					with open(indexFile, 'w') as fp:
 						fp.write(str(indexList))
 				else:
-					print '\tfail:%s' % (errContent)
+					print('\tfail:%s' % (errContent))
 					if os.path.isfile(dataFile):
 						os.remove(dataFile)
 
@@ -200,7 +201,7 @@ class Importer(IExporter):
 
 	# 记录下没有文件的和表名冲突的信息
 	def run(self, dir, dbMode, dbNames, force=False):
-		print 'import run==========================='
+		print('import run===========================')
 		if not os.path.isdir(dir):
 			return
 		allDbs = self.getDirs(dir)
@@ -244,8 +245,8 @@ class Importer(IExporter):
 					if len(validDbDict[dbName]) == 0:
 						validDbDict.pop(dbName)
 		# 根据validDbDict信息import
-		print 'invalid database:', self.pt(invalidDbs)
-		print 'conflict collection:', self.pt(conflictDict)
+		print('invalid database:', self.pt(invalidDbs))
+		print('conflict collection:', self.pt(conflictDict))
 		for dbName, colNames in validDbDict.iteritems():
 			path = os.path.join(dir, dbName)
 			for colName in colNames:
@@ -266,16 +267,16 @@ class Importer(IExporter):
 					importcmd += ' -u %s' % (user)
 				if password:
 					importcmd += ' -p %s' % (urllib_.unquote(password))
-				print 'importing %s.%s'%(dbName, colName)
+				print('importing %s.%s'%(dbName, colName))
 				p = Popen(importcmd, shell=True, stdout=PIPE, stderr=PIPE)
 				p.wait()
 				errContent = p.stderr.read()
 				matchObj = re.search(r'imported (\d+) document', errContent)
 				if matchObj:
 					real = int(matchObj.group(1))
-					print '\tsucc:%d' % (real)
+					print('\tsucc:%d' % (real))
 				else:
-					print '\tfail:%s' % (errContent)
+					print('\tfail:%s' % (errContent))
 		dbList = self._client.GetDbList(validDbDict.keys())
 		for dbInfo in dbList:
 			dbName = dbInfo.name
@@ -287,7 +288,7 @@ class Importer(IExporter):
 					continue
 				with open(indexFile, 'r') as fp:
 					indexList = eval(fp.read())
-					print 'create index %s.%s'%(dbName, colName)
+					print('create index %s.%s'%(dbName, colName))
 					colInfo.setIndex(indexList)
 
 class Client(object):
@@ -398,7 +399,7 @@ def run():
 	srcUser, srcPwd, srcIp, srcPort = GetHostInfo(source)
 	dstUser, dstPwd, dstIp, dstPort = GetHostInfo(dest)
 	if len(dbs) == 0:
-		print 'db empty!!!'
+		print('db empty!!!')
 		parser.print_help()
 		exit(0)
 	if dbs[0] == '+':
@@ -411,7 +412,7 @@ def run():
 		dbMode = DB_INCLUDE
 	dbNames = GetDbNames(dbs)
 	if len(dbNames) == 0:
-		print 'db empty!!!'
+		print('db empty!!!')
 		parser.print_help()
 		exit(0)
 	tempDir = GetTempDir()
@@ -419,7 +420,7 @@ def run():
 		os.mkdir(tempDir)
 	if mode == MODE_ALL:
 		if srcIp == '' or dstIp == '' or dstIp in FormatIpList or (srcIp == dstIp and srcPort == dstPort):
-			print 'ip or port invalid!!!'
+			print('ip or port invalid!!!')
 			parser.print_help()
 			exit(0)
 		srcClient = Client(srcIp, srcPort, srcUser, srcPwd)
@@ -430,7 +431,7 @@ def run():
 		importer.run(tempDir, dbMode, dbNames, force)
 	elif mode == MODE_EXPORT:
 		if srcIp == '':
-			print 'source ip invalid!!!'
+			print('source ip invalid!!!')
 			parser.print_help()
 			exit(0)
 		srcClient = Client(srcIp, srcPort, srcUser, srcPwd)
@@ -438,14 +439,14 @@ def run():
 		exporter.run(tempDir, dbMode, dbNames, not exist)
 	elif mode == MODE_IMPORT:
 		if dstIp == '' or dstIp in FormatIpList:
-			print 'dest ip invalid!!!'
+			print('dest ip invalid!!!')
 			parser.print_help()
 			exit(0)
 		dstClient = Client(dstIp, dstPort, dstUser, dstPwd)
 		importer = Importer(dstClient)
 		importer.run(tempDir, dbMode, dbNames, force)
 	else:
-		print 'unknown mode!!!'
+		print('unknown mode!!!')
 		parser.print_help()
 		exit(0)
 
